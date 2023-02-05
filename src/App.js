@@ -2,33 +2,48 @@ import axios from 'axios'
 import { useEffect, useState } from 'react'
 import './App.css'
 import CurrencyRow from './components/CurrencyRow'
+import { useConverterContext } from './contexts/ConverterContext'
 
 const BASE_URL = 'https://api.apilayer.com/exchangerates_data/latest'
-const apiKey = 'GkXYrmaqOIRCjFnDnc5ihRZ6erHVq3Ss'
+const apiKey = ''
 
 function App() {
-  const [currencies, setCurrencies] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const {
+    setCurrencyOptions,
+    setFromCurrency,
+    setToCurrency,
+    currencyOptions,
+    fromCurrency,
+    toCurrency,
+  } = useConverterContext()
 
   useEffect(() => {
     const controller = new AbortController()
 
-    try {
-      getData()
-      console.log('try')
-    } catch (error) {
-      console.error(`Error: ${error}`)
-    }
+    getData()
 
     async function getData() {
-      const response = await axios({
-        method: 'GET',
-        url: BASE_URL,
-        headers: { apikey: 'apiKey' },
-        signal: controller.signal,
-      })
+      try {
+        setIsLoading(true)
+        const response = await axios({
+          method: 'GET',
+          url: BASE_URL,
+          headers: { apikey: apiKey },
+          signal: controller.signal,
+        })
 
-      setCurrencies([response.data.base, ...Object.keys(response.data.rates)])
-      console.log(response.data)
+        await setCurrencyOptions([...Object.keys(response.data.rates)])
+        await setFromCurrency({ name: response.data.base })
+        await setToCurrency({ name: Object.keys(response.data.rates)[0] })
+        await console.log(response.data)
+      } catch (error) {
+        console.log(`Tohle je log uvnitr error: ${error}`)
+        throw new Error(`Tohle je uvnitr error: ${error}`)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     return () => controller.abort()
@@ -37,9 +52,27 @@ function App() {
   return (
     <>
       <h1>Convert</h1>
-      <CurrencyRow currencies={currencies} />
+      <CurrencyRow
+        currencyOptions={currencyOptions}
+        onChangeCurrency={(event) =>
+          setFromCurrency((state) => ({ ...state, name: event.target.value }))
+        }
+        selectedCurrency={fromCurrency}
+        onChangeAmount={(event) =>
+          setFromCurrency((state) => ({ ...state, amount: event.target.value }))
+        }
+      />
       <div>=</div>
-      <CurrencyRow currencies={currencies} />
+      <CurrencyRow
+        currencyOptions={currencyOptions}
+        selectedCurrency={toCurrency}
+        onChangeCurrency={(event) =>
+          setToCurrency((state) => ({ ...state, name: event.target.value }))
+        }
+        onChangeAmount={(event) =>
+          setToCurrency((state) => ({ ...state, amount: event.target.value }))
+        }
+      />
       <div className="apiKey">
         <label htmlFor="ApiKey">exchangeratesapi.io Api Key</label>
         <input
